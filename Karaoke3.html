@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>노래방 PRO</title>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@300;400;700;900&family=Noto+Sans+KR:wght@300;400;700;900&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/kuroshiro@1.2.0/dist/kuroshiro.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/kuroshiro-analyzer-kuromoji@1.1.0/dist/kuroshiro-analyzer-kuromoji.min.js"></script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #060810;
+  --surface: rgba(12, 15, 30, 0.65);
+  --surface2: rgba(17, 22, 39, 0.8);
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --active: #ffd166;
+  --active-glow: rgba(255,209,102,0.45);
+  --accent: #7c6ef0;
+  --accent2: #00e5d1;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'M PLUS Rounded 1c', 'Noto Sans KR', sans-serif;
+  height: 100vh; height: 100dvh;
+  overflow: hidden;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 배경 펄스 효과 */
+body::before {
+  content: '';
+  position: fixed; top: 30%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90vw; height: 90vh;
+  background: radial-gradient(circle, rgba(124,110,240,0.12) 0%, rgba(0,229,209,0.06) 40%, transparent 70%);
+  pointer-events: none; z-index: 0;
+  animation: pulseBg 8s ease-in-out infinite alternate;
+}
+@keyframes pulseBg {
+  0% { transform: translate(-50%, -50%) scale(1); }
+  100% { transform: translate(-50%, -48%) scale(1.05); }
+}
+
+.screen { display: none; position: fixed; inset: 0; z-index: 1; flex-direction: column; }
+.screen.active { display: flex; }
+
+/* ─── 공통 버튼 ─── */
+.btn {
+  padding: 0.8rem 1.2rem; border-radius: 12px; border: none; font-family: inherit;
+  font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: all 0.25s; white-space: nowrap;
+}
+.btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; box-shadow: 0 4px 15px rgba(124, 110, 240, 0.3); }
+.btn-primary:active { transform: translateY(2px); box-shadow: 0 2px 8px rgba(124, 110, 240, 0.3); }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); backdrop-filter: blur(10px); }
+.back-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 0.4rem 0.6rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
+
+/* ─── UPLOAD SCREEN ─── */
+#screen-upload { padding: 1.5rem; overflow-y: auto; align-items: center; justify-content: center; }
+.upload-container { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 2rem; padding-bottom: 2rem; }
+.upload-title h1 { font-size: 2.5rem; font-weight: 900; background: linear-gradient(135deg, #fff 0%, var(--accent2) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
+.upload-title p { color: var(--muted); text-align: center; margin-top: 0.5rem; }
+
+.mode-card {
+  background: rgba(12, 15, 30, 0.5); border: 1px solid var(--border); border-radius: 20px; padding: 1.5rem;
+  display: flex; flex-direction: column; gap: 1rem; backdrop-filter: blur(10px); transition: all 0.3s;
+}
+.mode-card:focus-within { border-color: var(--accent2); box-shadow: 0 0 20px rgba(0, 229, 209, 0.1); }
+.mode-card h3 { font-size: 1.1rem; color: #fff; display: flex; align-items: center; gap: 0.5rem; }
+
+.drop-zone {
+  width: 100%; height: 120px; border: 2px dashed rgba(124, 110, 240, 0.5); border-radius: 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem;
+  cursor: pointer; position: relative; background: rgba(0,0,0,0.2); transition: all 0.2s;
+}
+.drop-zone:active { background: rgba(124,110,240,0.1); border-color: var(--accent); }
+.drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+.yt-input-row { display: flex; gap: 0.5rem; }
+.yt-input-row input { flex: 1; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem; color: #fff; font-family: inherit; }
+.yt-input-row input:focus { border-color: #ff0000; outline: none; }
+
+/* ─── SEARCH SCREEN ─── */
+#screen-search { padding: 1rem; }
+.search-container-scroll { flex: 1; overflow-y: auto; width: 100%; max-width: 540px; margin: 0 auto; padding-bottom: 2rem; }
+.search-header { margin-bottom: 1rem; }
+.search-header h2 { font-size: 1.4rem; font-weight: 800; color: #fff; margin-top: 0.5rem; }
+.search-form { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1rem; }
+.field-row { display: flex; gap: 0.5rem; width: 100%; }
+.field-row input { flex: 1; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border); border-radius: 12px; padding: 0.8rem; color: #fff; font-size: 0.95rem; outline: none; }
+.field-row input:focus { border-color: var(--accent2); }
+.search-status { font-size: 0.85rem; color: var(--accent2); font-weight: 700; margin-bottom: 1rem; }
+.results-list { display: flex; flex-direction: column; gap: 0.6rem; }
+.result-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.8rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+.result-item:active { background: rgba(0,229,209,0.1); border-color: var(--accent2); }
+.result-info { flex: 1; min-width: 0; }
+.result-track { font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.result-artist { font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
+.badge-sync { font-size: 0.7rem; padding: 0.25rem 0.5rem; border-radius: 6px; background: rgba(0,229,209,0.15); color: var(--accent2); font-weight: 800; white-space: nowrap; }
+
+/* ─── PLAYER SCREEN ─── */
+#screen-player { flex-direction: column; height: 100%; }
+.player-header { padding: 0.8rem 1rem; display: flex; align-items: center; justify-content: space-between; z-index: 10; background: rgba(6, 8, 16, 0.6); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+.player-song-info { text-align: right; min-width: 0; flex: 1; margin-left: 1rem; }
+.player-title { font-weight: 900; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player-artist { font-size: 0.8rem; color: var(--accent2); }
+
+/* YouTube Player Container */
+#yt-visual-container {
+  width: 100%; height: 0; overflow: hidden; transition: height 0.3s;
+  background: #000; display: flex; justify-content: center; align-items: center;
+}
+#yt-visual-container.active { height: 180px; border-bottom: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+
+/* 부드러운 가사 스테이지 */
+.lyrics-stage {
+  flex: 1; display: flex; align-items: center; justify-content: center; padding: 0 1.5rem; position: relative; overflow: hidden;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+}
+.lyrics-glow { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; height: 180px; background: radial-gradient(ellipse, rgba(255, 209, 102, 0.12) 0%, transparent 60%); opacity: 0; transition: opacity 0.8s; }
+.lyrics-glow.on { opacity: 1; }
+.lyrics-wrap { position: absolute; top: 50%; left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* ★ 반응형 가변 폰트 적용 (clamp) & 텍스트 줄바꿈 방지 완화 */
+.lyric-line {
+  text-align: center; padding: 0.8rem 0.5rem; width: 100%; max-width: 600px;
+  font-size: clamp(1rem, 4.5vw, 1.25rem); /* 모바일에서는 폰트 축소, 태블릿 이상 커짐 */
+  font-weight: 700; color: var(--text); opacity: 0.25; filter: blur(1px);
+  transform: scale(0.9); transform-origin: center center;
+  transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer; word-break: keep-all; overflow-wrap: break-word;
+}
+.lyric-line.active {
+  opacity: 1; color: var(--active); filter: blur(0px); text-shadow: 0 0 20px var(--active-glow); font-weight: 900;
+  transform: scale(1.1); /* 확대 배율을 1.25 -> 1.1로 줄여서 양옆 짤림 방지 */
+}
+.lyric-line.long-text.active { transform: scale(1.02); } /* 글자가 아주 길면 거의 확대하지 않음 */
+
+/* ★ 요미가나(Furigana) 루비 태그 스타일링 */
+ruby { ruby-align: center; }
+rt { font-size: 0.5em; color: var(--accent2); font-weight: 700; transform: translateY(-2px); opacity: 0.9; }
+
+/* 컨트롤러 */
+.controls { padding: 1rem 1.2rem calc(1rem + env(safe-area-inset-bottom)); background: rgba(6, 8, 16, 0.8); backdrop-filter: blur(20px); border-top: 1px solid var(--border); z-index: 10; }
+.progress-row { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1rem; max-width: 600px; margin: 0 auto 1rem; }
+.time { font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 40px; }
+.prog-track { flex: 1; height: 8px; background: rgba(255,255,255,0.1); border-radius: 6px; position: relative; cursor: pointer; }
+.prog-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 6px; pointer-events: none; }
+.btns { display: flex; align-items: center; justify-content: center; gap: 2rem; }
+.ctrl { background: none; border: none; color: var(--text); font-size: 1.5rem; cursor: pointer; transition: all 0.2s; }
+.ctrl:active { transform: scale(1.1); color: #fff; }
+.ctrl.big { font-size: 2.8rem; color: var(--active); }
+
+/* 로딩 오버레이 */
+#loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; flex-direction: column; align-items: center; justify-content: center; color: #fff; font-weight: 700; gap: 1rem; backdrop-filter: blur(5px); }
+.spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.2); border-top-color: var(--accent2); border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <p id="loading-text">데이터를 준비 중입니다...</p>
+</div>
+
+<div id="screen-upload" class="screen active">
+  <div class="upload-container">
+    <div class="upload-title">
+      <h1>노래방 PRO</h1>
+      <p>유튜브 영상이나 MP3로 노래방을 시작하세요</p>
+    </div>
+
+    <div class="mode-card">
+      <h3>📺 유튜브 연동 (추천)</h3>
+      <p style="font-size: 0.85rem; color: var(--muted); margin-bottom: 0.5rem;">유튜브 영상 링크를 넣으면 바로 배경 영상과 함께 재생됩니다.</p>
+      <div class="yt-input-row">
+        <input type="text" id="yt-url" placeholder="https://youtu.be/...">
+        <button class="btn btn-primary" onclick="loadYouTube()" style="background: linear-gradient(135deg, #ff0000, #ff4e50);">확인</button>
+      </div>
+    </div>
+
+    <div class="mode-card">
+      <h3>🎵 MP3 파일 업로드</h3>
+      <div class="drop-zone" id="drop-zone">
+        <div style="font-size: 2rem;">📂</div>
+        <p>여기를 터치해 파일 선택</p>
+        <input type="file" id="mp3-input" accept=".mp3,audio/*">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="screen-search" class="screen">
+  <div class="search-container-scroll">
+    <div class="search-header">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <button class="back-btn" onclick="goHome()">🏠 처음으로</button>
+        <span id="media-type-badge" style="font-size:0.75rem; color:var(--accent2); font-weight:700;"></span>
+      </div>
+      <h2>가사 찾기</h2>
+    </div>
+    <div class="search-form">
+      <div class="field-row">
+        <input type="text" id="f-artist" placeholder="아티스트 / アーティスト">
+      </div>
+      <div class="field-row">
+        <input type="text" id="f-track" placeholder="곡 제목 / 曲タイトル">
+        <button class="btn btn-primary" id="srch-btn" onclick="doSearch()">검색</button>
+      </div>
+    </div>
+    <div class="search-status" id="srch-status"></div>
+    <div class="results-list" id="results-list"></div>
+  </div>
+</div>
+
+<div id="screen-player" class="screen">
+  <div class="player-header">
+    <button class="back-btn" onclick="goBack()">← 가사 변경</button>
+    <div class="player-song-info">
+      <div class="player-title" id="p-title">—</div>
+      <div class="player-artist" id="p-artist">—</div>
+    </div>
+  </div>
+
+  <div id="yt-visual-container">
+    <div id="yt-player-iframe"></div>
+  </div>
+
+  <div class="lyrics-stage">
+    <div class="lyrics-glow" id="lyr-glow"></div>
+    <div class="lyrics-wrap" id="lyr-wrap"></div>
+  </div>
+
+  <div class="controls">
+    <div class="progress-row">
+      <span class="time" id="t-cur">0:00</span>
+      <div class="prog-track" id="prog-track">
+        <div class="prog-fill" id="prog-fill" style="width:0%"></div>
+      </div>
+      <span class="time end" id="t-tot">0:00</span>
+    </div>
+    <div class="btns">
+      <button class="ctrl" onclick="seekBy(-5)">◀◀</button>
+      <button class="ctrl big" id="pp-btn" onclick="togglePlay()">▶</button>
+      <button class="ctrl" onclick="seekBy(5)">▶▶</button>
+    </div>
+  </div>
+</div>
+
+<audio id="audio"></audio>
+
+<script>
+/* ─── STATE & CONSTANTS ─── */
+const LYRIC_OFFSET = 0.28; 
+let playMode = 'local'; // 'local' | 'youtube'
+let ytPlayer = null;
+let ytReady = false;
+let syncInterval = null;
+
+const audio = document.getElementById('audio');
+let lyrics = [];
+let curIdx = -1;
+let song = { title: '', artist: '' };
+
+/* ─── KUROSHIRO (일본어 후리가나) ─── */
+let kuroshiro = null;
+let kuroshiroReady = false;
+
+async function initKuroshiro() {
+  try {
+    if (typeof Kuroshiro === 'undefined') return;
+    kuroshiro = new Kuroshiro();
+    // Kuromoji 사전 파일 (사전 다운로드에 1~2초 소요될 수 있음)
+    await kuroshiro.init(new KuromojiAnalyzer({ dictPath: "https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict" }));
+    kuroshiroReady = true;
+    console.log("한자 변환기 준비 완료!");
+  } catch (err) {
+    console.error("Kuroshiro 초기화 실패:", err);
+  }
+}
+// 페이지 로드 시 백그라운드에서 조용히 사전 로딩 시작
+window.addEventListener('DOMContentLoaded', initKuroshiro);
+
+
+/* ─── YOUTUBE API INIT ─── */
+function onYouTubeIframeAPIReady() {
+  ytPlayer = new YT.Player('yt-player-iframe', {
+    height: '100%', width: '100%',
+    playerVars: { 'playsinline': 1, 'controls': 0, 'disablekb': 1, 'rel': 0 },
+    events: {
+      'onReady': () => { ytReady = true; },
+      'onStateChange': onYtStateChange
+    }
+  });
+}
+
+function onYtStateChange(event) {
+  if (event.data === YT.PlayerState.PLAYING) {
+    document.getElementById('pp-btn').textContent = '⏸';
+    document.getElementById('lyr-glow').classList.add('on');
+  } else {
+    document.getElementById('pp-btn').textContent = '▶';
+    document.getElementById('lyr-glow').classList.remove('on');
+  }
+}
+
+/* ─── SCREENS ─── */
+const showScreen = id => {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+};
+const showLoading = (text) => {
+  document.getElementById('loading-text').textContent = text;
+  document.getElementById('loading-overlay').style.display = 'flex';
+};
+const hideLoading = () => document.getElementById('loading-overlay').style.display = 'none';
+
+
+/* ─── MEDIA UPLOAD LOGIC ─── */
+function loadYouTube() {
+  const url = document.getElementById('yt-url').value.trim();
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  if (match && match[2].length === 11) {
+    playMode = 'youtube';
+    const videoId = match[2];
+    
+    document.getElementById('media-type-badge').textContent = '📺 YouTube 모드';
+    document.getElementById('f-artist').value = '';
+    document.getElementById('f-track').value = '';
+    document.getElementById('results-list').innerHTML = '';
+    document.getElementById('srch-status').textContent = '가사를 검색할 곡 제목을 입력해주세요.';
+    
+    // 유튜브 플레이어 큐에 비디오 로드
+    if(ytReady) ytPlayer.cueVideoById(videoId);
+    showScreen('screen-search');
+  } else {
+    alert('올바른 유튜브 링크를 입력해주세요!');
+  }
+}
+
+document.getElementById('mp3-input').addEventListener('change', e => {
+  if (e.target.files[0]) {
+    const file = e.target.files[0];
+    playMode = 'local';
+    audio.src = URL.createObjectURL(file);
+    
+    const base = file.name.replace(/\.[^/.]+$/, '');
+    let artist = '', track = base;
+    const m = base.match(/^(.+?)\s[-–—]\s(.+)$/);
+    if (m) { artist = m[1].trim(); track = m[2].trim(); }
+
+    document.getElementById('media-type-badge').textContent = '🎵 로컬 MP3';
+    document.getElementById('f-artist').value = artist;
+    document.getElementById('f-track').value = track;
+    document.getElementById('results-list').innerHTML = '';
+    
+    showScreen('screen-search');
+    if (track) doSearch();
+  }
+});
+
+
+/* ─── LRCLIB SEARCH (API 유지) ─── */
+async function doSearch() {
+  const artist = document.getElementById('f-artist').value.trim();
+  const track  = document.getElementById('f-track').value.trim();
+  if (!track && !artist) return;
+
+  const statusEl = document.getElementById('srch-status');
+  const listEl   = document.getElementById('results-list');
+  const btn      = document.getElementById('srch-btn');
+
+  statusEl.textContent = '검색 중... 🔍';
+  listEl.innerHTML = ''; btn.disabled = true;
+
+  try {
+    let results = [];
+    if (track) {
+      const p = new URLSearchParams(); p.set('track_name', track); if(artist) p.set('artist_name', artist);
+      const r = await fetch(`https://lrclib.net/api/search?${p}`);
+      if (r.ok) results = await r.json();
+    }
+    if (!results.length) {
+      const q = [artist, track].filter(Boolean).join(' ');
+      const r = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(q)}`);
+      if (r.ok) results = await r.json();
+    }
+    if (!results.length) { statusEl.textContent = '결과 없음'; return; }
+
+    results.sort((a, b) => (!!b.syncedLyrics) - (!!a.syncedLyrics));
+    statusEl.textContent = `${results.length}개 결과 (싱크 가사 우선)`;
+    
+    results.slice(0, 14).forEach(item => {
+      const hasSync = !!item.syncedLyrics;
+      const div = document.createElement('div');
+      div.className = 'result-item ' + (hasSync ? 'has-sync' : 'no-sync');
+      div.innerHTML = `<div class="result-info"><div class="result-track">${esc(item.trackName)}</div><div class="result-artist">${esc(item.artistName)}</div></div><span class="badge-sync">${hasSync ? '싱크 ✓' : '가사만'}</span>`;
+      if (hasSync) {
+        div.addEventListener('click', () => {
+          song = { title: item.trackName, artist: item.artistName };
+          prepareAndLaunchPlayer(item.syncedLyrics);
+        });
+      }
+      listEl.appendChild(div);
+    });
+  } catch (err) { statusEl.textContent = '오류: ' + err.message; } 
+  finally { btn.disabled = false; }
+}
+
+
+/* ─── PLAYER PREP & FURIGANA PROCESSING ─── */
+async function prepareAndLaunchPlayer(lrcText) {
+  showLoading('가사 분석 및 한자 변환 중... ⏳');
+  
+  // 1. LRC 파싱
+  let parsedLyrics = parseLRC(lrcText);
+  
+  // 2. 일본어 한자 요미가나(후리가나) 처리
+  if (kuroshiroReady) {
+    for (let i = 0; i < parsedLyrics.length; i++) {
+      // 가사에 일본어 한자(Kanji)가 포함되어 있는지 정규식으로 검사
+      if (/[\u4E00-\u9FAF]/.test(parsedLyrics[i].text)) {
+        try {
+          // 쿠로시로 라이브러리로 HTML 루비 태그 텍스트로 변환
+          parsedLyrics[i].html = await kuroshiro.convert(parsedLyrics[i].text, { mode: "furigana", to: "hiragana" });
+        } catch(e) {
+          parsedLyrics[i].html = esc(parsedLyrics[i].text);
+        }
+      } else {
+        parsedLyrics[i].html = esc(parsedLyrics[i].text);
+      }
+    }
+  } else {
+    // 라이브러리 로딩 실패 시 원본 그대로 사용
+    parsedLyrics.forEach(l => l.html = esc(l.text));
+  }
+
+  lyrics = parsedLyrics;
+  curIdx = -1;
+
+  document.getElementById('p-title').textContent = song.title;
+  document.getElementById('p-artist').textContent = song.artist;
+  
+  // 유튜브 모드 UI 세팅
+  const ytContainer = document.getElementById('yt-visual-container');
+  if (playMode === 'youtube') {
+    ytContainer.classList.add('active');
+  } else {
+    ytContainer.classList.remove('active');
+  }
+
+  initLyricsDOM();
+  hideLoading();
+  showScreen('screen-player');
+
+  // 재생 시작 및 인터벌 타이머 가동
+  startPlayback();
+}
+
+
+/* ─── UNIFIED PLAYBACK SYSTEM ─── */
+function startPlayback() {
+  if (syncInterval) clearInterval(syncInterval);
+  syncInterval = setInterval(syncLoop, 100); // 100ms마다 시간 체크
+
+  if (playMode === 'local') {
+    audio.play()
+      .then(() => { document.getElementById('pp-btn').textContent = '⏸'; document.getElementById('lyr-glow').classList.add('on'); })
+      .catch(() => { document.getElementById('pp-btn').textContent = '▶'; });
+  } else if (playMode === 'youtube' && ytReady) {
+    ytPlayer.playVideo();
+  }
+}
+
+function togglePlay() {
+  if (playMode === 'local') {
+    audio.paused ? audio.play() : audio.pause();
+    document.getElementById('pp-btn').textContent = audio.paused ? '▶' : '⏸';
+  } else if (playMode === 'youtube' && ytReady) {
+    const state = ytPlayer.getPlayerState();
+    if (state === YT.PlayerState.PLAYING) ytPlayer.pauseVideo();
+    else ytPlayer.playVideo();
+  }
+}
+
+function seekBy(sec) {
+  if (playMode === 'local') {
+    audio.currentTime = Math.max(0, audio.currentTime + sec);
+  } else if (playMode === 'youtube' && ytReady) {
+    const cur = ytPlayer.getCurrentTime();
+    ytPlayer.seekTo(Math.max(0, cur + sec), true);
+  }
+}
+
+// 100ms마다 도는 메인 싱크 엔진
+function syncLoop() {
+  let t = 0, dur = 0;
+  
+  if (playMode === 'local') {
+    t = audio.currentTime; dur = audio.duration || 0;
+  } else if (playMode === 'youtube' && ytReady) {
+    t = ytPlayer.getCurrentTime() || 0; dur = ytPlayer.getDuration() || 0;
+  }
+
+  // 진행률 바 업데이트
+  if (dur > 0) {
+    const pct = ((t / dur) * 100).toFixed(2) + '%';
+    document.getElementById('prog-fill').style.width = pct;
+    document.getElementById('t-cur').textContent = fmt(t);
+    document.getElementById('t-tot').textContent = fmt(dur);
+  }
+
+  // 가사 싱크 로직 (LYRIC_OFFSET 적용)
+  const syncTime = t + LYRIC_OFFSET;
+  let lo = 0, hi = lyrics.length - 1, found = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (lyrics[mid].time <= syncTime) { found = mid; lo = mid + 1; }
+    else hi = mid - 1;
+  }
+
+  if (found !== curIdx) {
+    curIdx = found;
+    updateLyricsPosition();
+  }
+}
+
+// 오디오 전용 이벤트 (종료 시)
+audio.addEventListener('ended', () => {
+  document.getElementById('pp-btn').textContent = '▶';
+  document.getElementById('lyr-glow').classList.remove('on');
+});
+
+
+/* ─── LRC & LYRICS DOM ─── */
+function parseLRC(text) {
+  const result = [];
+  for (const line of text.split('\n')) {
+    const timeRe = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/g;
+    const matches = [...line.matchAll(timeRe)];
+    if (!matches.length) continue;
+    const textPart = line.slice(matches[matches.length - 1].index + matches[matches.length - 1][0].length).trim();
+    if (!textPart) continue;
+    for (const m of matches) {
+      const t = +m[1] * 60 + +m[2] + +m[3].padEnd(3, '0') / 1000;
+      result.push({ time: t, text: textPart });
+    }
+  }
+  return result.sort((a, b) => a.time - b.time);
+}
+
+function initLyricsDOM() {
+  const wrap = document.getElementById('lyr-wrap');
+  wrap.innerHTML = '';
+  wrap.style.transform = `translateY(0px)`;
+
+  if (!lyrics.length) {
+    wrap.innerHTML = '<div class="lyric-line" style="opacity:0.8;">가사 없음</div>';
+    return;
+  }
+
+  lyrics.forEach((line, i) => {
+    const div = document.createElement('div');
+    div.className = 'lyric-line';
+    if (line.text.length > 25) div.classList.add('long-text'); // 글자가 길면 반응형 스케일 조절용 클래스
+    
+    div.id = `lyr-${i}`;
+    div.innerHTML = line.html; // 후리가나가 적용된 HTML 삽입
+    
+    div.addEventListener('click', () => {
+      const jumpTime = Math.max(0, lyrics[i].time - LYRIC_OFFSET);
+      if (playMode === 'local') { audio.currentTime = jumpTime; if(audio.paused) togglePlay(); }
+      else if (playMode === 'youtube' && ytReady) { ytPlayer.seekTo(jumpTime, true); ytPlayer.playVideo(); }
+    });
+    wrap.appendChild(div);
+  });
+}
+
+function updateLyricsPosition() {
+  if (!lyrics.length) return;
+  document.querySelectorAll('.lyric-line.active').forEach(el => el.classList.remove('active'));
+
+  if (curIdx >= 0) {
+    const activeEl = document.getElementById(`lyr-${curIdx}`);
+    if (activeEl) {
+      activeEl.classList.add('active');
+      const offset = -(activeEl.offsetTop + (activeEl.offsetHeight / 2));
+      document.getElementById('lyr-wrap').style.transform = `translateY(${offset}px)`;
+    }
+  } else {
+    document.getElementById('lyr-wrap').style.transform = `translateY(0px)`;
+  }
+}
+
+/* ─── NAVIGATION UTILS ─── */
+function goBack() {
+  if(syncInterval) clearInterval(syncInterval);
+  if(playMode === 'local') audio.pause();
+  else if(ytReady) ytPlayer.pauseVideo();
+  showScreen('screen-search');
+}
+
+function goHome() {
+  if(syncInterval) clearInterval(syncInterval);
+  if(playMode === 'local') { audio.pause(); audio.src = ''; }
+  else if(ytReady) { ytPlayer.stopVideo(); }
+  
+  document.getElementById('yt-url').value = '';
+  document.getElementById('mp3-input').value = '';
+  showScreen('screen-upload');
+}
+
+/* 프로그래스 바 클릭/터치 이벤트 */
+const progTrack = document.getElementById('prog-track');
+function seekFromEvent(e) {
+  let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+  const rect = progTrack.getBoundingClientRect();
+  const r = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  
+  if (playMode === 'local' && audio.duration) { audio.currentTime = r * audio.duration; }
+  else if (playMode === 'youtube' && ytReady && ytPlayer.getDuration()) { ytPlayer.seekTo(r * ytPlayer.getDuration(), true); }
+}
+let dragging = false;
+progTrack.addEventListener('mousedown', e => { dragging = true; seekFromEvent(e); });
+document.addEventListener('mousemove', e => { if (dragging) seekFromEvent(e); });
+document.addEventListener('mouseup', () => { dragging = false; });
+progTrack.addEventListener('touchstart', e => seekFromEvent(e), { passive: true });
+
+function fmt(s) { if (!isFinite(s)) return '0:00'; return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`; }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+</script>
+</body>
+</html>
